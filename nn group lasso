@@ -1,0 +1,69 @@
+import torch 
+import time
+from torch.autograd import Variable
+from torch.nn import functional as F
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+class MLP(torch.nn.Module):
+    def __init__(self):
+        super(MLP, self).__init__()
+        self.linear1 = torch.nn.Linear(800, 600)
+        self.linear2 = torch.nn.Linear(600, 300)
+        self.linear3 = torch.nn.Linear(300,1)
+
+    def forward(self, x):
+        layer1_out = F.tanh(self.linear1(x))
+        layer2_out = F.tanh(self.linear2(layer1_out))
+        out = F.tanh(self.linear3(layer2_out))
+        return out
+
+def group_lasso_proximal(weights, lr, l):
+    neuron_l2 = torch.sum(torch.pow(weights, 2), axis=0)
+    penalty_weight = (1-lr*l/torch.sqrt(neuron_l2))*(torch.sqrt(neuron_l2)>(lr*l))
+    return weights*penalty_weight
+
+
+start = time.time()
+train_size = 900
+dim_size = 400
+valid_size = 500
+#beta = torch.cat((torch.rand(dim_size), torch.zeros(dim_size)), dim=0)
+#beta = beta.reshape((2*dim_size,1))
+x_train = torch.cat((10*torch.ones((train_size, dim_size)),torch.rand((train_size, dim_size))), dim=1)
+x_valid = torch.rand((valid_size, 2*dim_size))
+y_train = torch.rand((train_size,1))
+y_valid = torch.rand((valid_size,1))
+
+device = torch.device('cuda:0')
+inputs = Variable(x_train).to(device)
+targets = Variable(y_train).to(device)
+inputs_valid = Variable(x_valid).to(device)
+targets_valid = Variable(y_valid).to(device)
+
+lr = 1e-4
+
+model = MLP().to(device)
+optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+
+l = 80
+
+num_epoch = 40
+for i in range(num_epoch):
+    outputs = model(inputs)
+    optimizer.zero_grad()
+    mse_loss = F.mse_loss(outputs, targets)
+    print(mse_loss)
+    mse_loss.backward()
+    optimizer.step()
+    model.linear1.weight = torch.nn.Parameter(group_lasso_proximal(model.linear1.weight, lr, l))
+    
+    
+lag = time.time()-start
+print(lag)
+print(F.mse_loss(model(inputs_valid),targets_valid))
+
+reg = LinearRegression().fit(np.array(x_train), np.array(y_train))
+y_predict = reg.predict(np.array(x_valid))
+print(F.mse_loss(torch.tensor(y_predict), y_valid))
+

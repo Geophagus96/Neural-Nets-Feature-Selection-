@@ -24,12 +24,14 @@ targets = Variable(y_train).to(device)
 inputs_valid = Variable(x_valid).to(device)
 targets_valid = Variable(y_valid).to(device)
 
+#Batch size specification, train dataset and valid dataset verification
 batch_size = 250
 train = torch.utils.data.TensorDataset(x_train, y_train)
 test = torch.utils.data.TensorDataset(x_valid, y_valid)
 train_loader = DataLoader(train, batch_size=batch_size, shuffle=False)
 test_loader = DataLoader(test, batch_size=batch_size, shuffle=False)
 
+#The RNN class
 class RNNModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, layer_dim, output_dim):
         super(RNNModel, self).__init__()
@@ -55,7 +57,8 @@ class RNNModel(nn.Module):
         out, hn = self.rnn(x, h0)
         out = self.fc(out[:, -1, :]) 
         return out
- 
+
+#The group lasso penalty 
 def group_lasso_penalty(weights):
     neuron_l2 = torch.sum(torch.pow(weights, 2), axis=0)
     return torch.sum(torch.sqrt(neuron_l2))
@@ -87,7 +90,7 @@ for epoch in range(num_epochs):
         # Forward propagation
         outputs = model(train)
         
-        #MSE loss with regularization
+        #MSE loss with regularization, penalty is only applied on the input to hidden layer weights 
         loss = error(outputs, labels)+l*group_lasso_penalty(model.rnn.weight_ih_l0)
         
         # Calculating gradients
@@ -95,17 +98,24 @@ for epoch in range(num_epochs):
         
         # Update parameters
         optimizer.step()
+    
+    #Predicting the training set 
     for i, (binput, btarget) in enumerate(train_loader):
         train  = Variable((binput.view(-1, 1, input_dim)))
         outputs = model(train)
         train_pred[(i*batch_size):((i+1)*batch_size)] = np.resize(outputs.detach().numpy(), batch_size)
+    
+    #Predicting the validation set
     for i, (binput, btarget) in enumerate(test_loader):
         train  = Variable((binput.view(-1, 1, input_dim)))
         outputs = model(train)
         valid_pred[(i*batch_size):((i+1)*batch_size)] = np.resize(outputs.detach().numpy(), batch_size)
+    
+    #Correlations
     print(np.corrcoef(train_pred, np.resize(y_train.detach().numpy(), train_size))[0][1])
     print(np.corrcoef(valid_pred, np.resize(y_valid.detach().numpy(), valid_size))[0][1])
 
+#Distribution plots for the weights of input to hidden layer 
 import matplotlib.pyplot as plt
 norms = np.sum(np.power(model.rnn.weight_ih_l0.detach().numpy(),2), axis=0)
 fig = plt.figure()

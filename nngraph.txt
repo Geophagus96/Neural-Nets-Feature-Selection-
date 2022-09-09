@@ -1,0 +1,51 @@
+digraph {
+  compound=true;
+  rankdir=TB;
+  subgraph cluster_0 {
+    rankdir = LR;
+    label="0";
+    node [style=filled,color=grey];
+    h01[shape=box, label="h_1(0)"]; 
+    h02[shape=box, label="h_2(0)"]; 
+  }
+  subgraph cluster_1 {
+    rankdir = LR;
+    label="1";
+    h11[shape=box, label="h_1(1)"];
+    h12[shape=box, label="h_2(1)"];
+    x1[shape=box, label="x_1"];
+    x1 -> h11[label="U1"];
+    h11 -> h12[label="U2"];
+  }
+  subgraph cluster_t {
+    rankdir = LR;
+    label="t";
+    ht1[shape=box, label="h_1(t)"];
+    ht2[shape=box, label="h_2(t)"];
+    xt[shape=box, label="x_t"];
+    xt -> ht1[label="U1"];
+    ht1 -> ht2[label="U2"];
+  }
+  subgraph cluster_T {
+      rankdir = LR;
+      label="T";
+      hT1[shape=box, label="h_1(T)"];
+      hT2[shape=box, label="h_2(T)"];
+      xT[shape=box, label="x_T"];
+      xT -> hT1[label="U1"];
+      hT1 -> hT2[label="U2"];
+  }
+  h01 -> h11[label="W1"];
+  h02 -> h12[label="W2"];
+  edge [style="dashed", minlen=1.7]{
+      
+    h11 -> ht1[label="W1"];
+    h12 -> ht2[label="W2"];
+    ht1 -> hT1[label="W1"];
+    ht2 -> hT2[label="W2"];
+  }
+  y[shape=circle];
+  edge [style="solid", minlen=1.5]{
+  hT2 -> y 
+}
+}
